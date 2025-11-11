@@ -1,0 +1,199 @@
+# Kickstarter Video Downloader
+
+An advanced web scraper for downloading videos from Kickstarter project pages. This tool uses multiple bypass techniques to handle 403 errors and Cloudflare protection, with comprehensive video extraction methods.
+
+## Features
+
+- **Multiple Bypass Techniques**: Handles 403 Forbidden errors with 4 different fetching methods
+  - Cloudscraper (Cloudflare bypass)
+  - Enhanced requests with rotating user agents
+  - Selenium Chrome with stealth mode
+  - Firefox fallback
+
+- **Comprehensive Video Extraction**: Uses 9 different methods to find videos
+  - Video HTML tags
+  - Source tags within video elements
+  - iFrame embeds (YouTube, Vimeo, etc.)
+  - Direct video links
+  - Data attributes
+  - Script tags with video URLs
+  - JSON-LD structured data
+  - Open Graph meta tags
+  - Regular meta tags
+
+- **Rate Limiting Protection**: 15-30 second delays between requests
+- **Progress Tracking**: Automatic checkpoints every 50 projects
+- **Detailed Logging**: Comprehensive logs for troubleshooting
+- **Resume Capability**: Can resume from interruptions
+
+## Requirements
+
+- Python 3.7+
+- Chrome browser (for Selenium)
+- Firefox browser (optional, for fallback)
+- yt-dlp (optional, for YouTube/Vimeo downloads)
+
+## Installation
+
+1. Clone or download this repository
+
+2. Install Python dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Install yt-dlp (optional, for YouTube/Vimeo support):
+```bash
+pip install yt-dlp
+```
+
+Or download from: https://github.com/yt-dlp/yt-dlp
+
+## Usage
+
+1. Prepare your CSV file with Kickstarter project URLs. The CSV should have these columns:
+   - `id`: Project ID
+   - `url`: Project URL
+   - `launched_at`: Launch date (optional)
+   - `state`: Project state (optional)
+
+2. Update the CSV file path in `advanced_scrapper.py` (line 447):
+```python
+csv_file = "path/to/your/Videos List.csv"
+```
+
+3. Run the script:
+```bash
+python advanced_scrapper.py
+```
+
+4. When prompted, choose how many projects to process:
+   - Press **Enter** for 5 projects (test mode)
+   - Type **'all'** to process all projects
+   - Type a **number** for specific amount
+
+## Output
+
+### Downloaded Videos
+Videos are saved to: `kickstarter_downloads/[project_name]/`
+
+### Logs
+Logs are saved to: `kickstarter_downloads/logs/`
+- `advanced_downloads_[timestamp].json` - Detailed statistics
+- `advanced_errors_[timestamp].log` - Error logs
+- `progress.json` - Resume checkpoint
+
+## Configuration
+
+### Adjust Delays
+To change the delay between requests, modify line 423 in `advanced_scrapper.py`:
+```python
+delay = 15 + random.random() * 15  # 15-30 seconds
+```
+
+### Change Download Directory
+Modify the `download_dir` parameter when creating the downloader:
+```python
+downloader = AdvancedKickstarterDownloader(csv_file, download_dir="custom_directory")
+```
+
+## Troubleshooting
+
+### Still Getting 403 Errors
+- Increase the delay between requests (change line 423)
+- Try running during off-peak hours
+- Consider using a VPN or proxy
+- Process smaller batches with longer breaks
+
+### No Videos Found
+- Check if the project page actually has videos
+- Review the logs to see which extraction methods were tried
+- The page might be using custom video players not covered by the extraction methods
+
+### Chrome Driver Issues
+If you get Chrome driver errors:
+```bash
+pip install --upgrade undetected-chromedriver
+```
+
+### Missing Dependencies
+If you get import errors:
+```bash
+pip install -r requirements.txt --upgrade
+```
+
+## Important Notes
+
+### Legal and Ethical Considerations
+- Respect Kickstarter's Terms of Service
+- Use reasonable rate limits to avoid overloading servers
+- Only download content you have rights to access
+- Consider reaching out to project creators for permission
+
+### Rate Limiting
+- Default: 15-30 seconds between projects
+- Kickstarter may still block you if processing too many projects
+- Consider processing in smaller batches over multiple days
+
+### Best Practices
+1. Start with 1-2 projects to test
+2. Use the default delays or longer
+3. Monitor the logs for errors
+4. Process during off-peak hours
+5. Save progress checkpoints regularly
+
+## File Structure
+
+```
+.
+├── advanced_scrapper.py          # Main script
+├── scrapper.py                   # Legacy script (backup)
+├── requirements.txt              # Python dependencies
+├── README.md                     # This file
+├── Videos List.csv               # Your input CSV
+└── kickstarter_downloads/        # Output directory
+    ├── [project_name]/           # Project-specific folders
+    │   └── video files
+    └── logs/                     # Log files
+        ├── advanced_downloads_*.json
+        ├── advanced_errors_*.log
+        └── progress.json
+```
+
+## Statistics
+
+The script tracks:
+- Total projects processed
+- Videos found
+- Videos successfully downloaded
+- Projects skipped (no videos)
+- Errors encountered
+
+View statistics in: `kickstarter_downloads/logs/advanced_downloads_[timestamp].json`
+
+## Example CSV Format
+
+```csv
+id,url,launched_at,state
+123456,https://www.kickstarter.com/projects/example/project-name,2024-01-01,successful
+789012,https://www.kickstarter.com/projects/another/project-two,2024-02-01,successful
+```
+
+## License
+
+This tool is provided as-is for educational purposes. Users are responsible for ensuring their use complies with applicable laws and website terms of service.
+
+## Support
+
+For issues or questions:
+1. Check the logs in `kickstarter_downloads/logs/`
+2. Review the troubleshooting section
+3. Ensure all dependencies are installed correctly
+
+## Version History
+
+- **v1.0** (Current)
+  - Multiple bypass techniques
+  - Comprehensive video extraction
+  - Rate limiting protection
+  - Progress tracking and resume capability

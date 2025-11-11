@@ -1,0 +1,10 @@
+# Core dependencies
+beautifulsoup4>=4.9.3
+cloudscraper>=1.2.71
+lxml>=4.9.0
+requests>=2.25.1
+selenium>=4.0.0
+undetected-chromedriver>=3.5.0
+
+# Optional (for YouTube/Vimeo downloads)
+# yt-dlp>=2023.0.0
