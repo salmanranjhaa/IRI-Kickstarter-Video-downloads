@@ -258,110 +258,80 @@ class AdvancedKickstarterDownloader:
             if driver:
                 driver.quit()
 
-    def extract_videos_comprehensive(self, soup, project_url):
-        """Comprehensive video extraction with all methods"""
+    def extract_main_video_only(self, soup, project_url):
+        """Extract ONLY the main campaign video from the Kickstarter project JSON"""
         videos = []
-
-        # 1. Find video HTML tags
-        for video in soup.find_all('video'):
-            src = video.get('src')
-            if src:
-                full_url = urljoin(project_url, src)
-                videos.append({'type': 'video_tag', 'url': full_url})
-
-            # Check source tags within video elements
-            for source in video.find_all('source'):
-                src = source.get('src')
-                if src:
-                    full_url = urljoin(project_url, src)
-                    videos.append({'type': 'source_tag', 'url': full_url})
-
-        # 2. Look for iframe embeds (YouTube, Vimeo, etc.)
-        for iframe in soup.find_all('iframe'):
-            src = iframe.get('src', '')
-            if src:
-                full_src = urljoin(project_url, src)
-                if any(x in full_src.lower() for x in ['youtube', 'youtu.be', 'vimeo', 'kickstarter', 'loom', 'wistia', 'video']):
-                    videos.append({'type': 'iframe', 'url': full_src})
-
-        # 3. Find direct video links in href attributes
-        for link in soup.find_all('a', href=True):
-            href = link.get('href', '')
-            full_href = urljoin(project_url, href)
-            if any(ext in full_href.lower() for ext in ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.flv']):
-                videos.append({'type': 'direct_link', 'url': full_href})
-
-        # 4. Search for video URLs in data attributes and all attributes
-        for elem in soup.find_all(True):
-            for attr, value in elem.attrs.items():
-                if isinstance(value, str) and value.strip():
-                    lower_value = value.lower()
-                    if any(ext in lower_value for ext in ['.mp4', '.webm', '.mov', '.avi', '.mkv', '.flv']):
-                        if not value.startswith('data:'):  # Skip data URIs
-                            full_url = urljoin(project_url, value)
-                            videos.append({'type': 'data_attribute', 'url': full_url})
-
-        # 5. Search for URLs in script tags (video config, JSON data)
+        
+        print("    Looking for main campaign video in page JSON...")
+        
+        # Find the script tag containing window.current_project
         for script in soup.find_all('script'):
-            if script.string:
-                script_text = script.string
-                if any(keyword in script_text.lower() for keyword in ['mp4', 'webm', 'video', 'youtube', 'vimeo']):
-                    # Extract URLs using regex
-                    patterns = [
-                        r'https?://[^\s"\'<>]+\.(?:mp4|webm|mov|avi|mkv|flv)[^\s"\'<>]*',
-                        r'https?://(?:www\.)?(?:youtube\.com|youtu\.be|vimeo\.com|kickstarter\.com)/[^\s"\'<>]*',
-                        r'"(https?://[^\s"\'<>]+\.(?:mp4|webm|mov|avi|mkv|flv)[^\s"\'<>]*)"',
-                        r"'(https?://[^\s\"'<>]+\.(?:mp4|webm|mov|avi|mkv|flv)[^\s\"'<>]*)'"
-                    ]
-
-                    for pattern in patterns:
-                        urls = re.findall(pattern, script_text)
-                        for url in urls:
-                            if isinstance(url, tuple):
-                                url = url[0]
-                            videos.append({'type': 'script', 'url': url})
-
-        # 6. Look for JSON-LD structured data
-        for script in soup.find_all('script', {'type': 'application/ld+json'}):
-            if script.string:
+            if script.string and 'window.current_project' in script.string:
                 try:
-                    data = json.loads(script.string)
-                    if isinstance(data, dict):
-                        if 'video' in data:
-                            video_data = data['video']
-                            if isinstance(video_data, dict) and 'contentUrl' in video_data:
-                                videos.append({'type': 'json_ld', 'url': video_data['contentUrl']})
-                            elif isinstance(video_data, list):
-                                for v in video_data:
-                                    if isinstance(v, dict) and 'contentUrl' in v:
-                                        videos.append({'type': 'json_ld', 'url': v['contentUrl']})
-                except:
-                    pass
-
-        # 7. Look for video data in other JSON scripts
-        for script in soup.find_all('script', {'type': 'application/json'}):
-            if script.string:
-                try:
-                    data = json.loads(script.string)
-                    self._extract_from_json(data, videos, project_url)
-                except:
-                    pass
-
-        # 8. Look for Open Graph video meta tags
-        for meta in soup.find_all('meta', {'property': True}):
-            prop = meta.get('property', '')
-            content = meta.get('content', '')
-            if prop in ['og:video', 'og:video:url', 'og:video:secure_url'] and content:
-                videos.append({'type': 'open_graph', 'url': content})
-
-        # 9. Look for video URLs in regular meta tags
-        for meta in soup.find_all('meta'):
-            content = meta.get('content', '')
-            if content and any(ext in content.lower() for ext in ['.mp4', '.webm', '.mov']):
-                if content.startswith('http'):
-                    videos.append({'type': 'meta_tag', 'url': content})
-
-        return self._deduplicate_videos(videos)
+                    import html as html_module
+                    
+                    script_text = script.string
+                    
+                    # Find the JSON string
+                    start_marker = 'window.current_project = "'
+                    start_idx = script_text.find(start_marker)
+                    
+                    if start_idx == -1:
+                        continue
+                    
+                    start_idx += len(start_marker)
+                    end_idx = script_text.find('";', start_idx)
+                    
+                    if end_idx == -1:
+                        continue
+                    
+                    # Extract the JSON string and decode HTML entities
+                    json_str = script_text[start_idx:end_idx]
+                    json_str = html_module.unescape(json_str)
+                    
+                    # Instead of parsing the entire JSON (which has issues with escaped quotes),
+                    # just use regex to extract the video URLs directly
+                    
+                    # Look for video object and extract ID
+                    video_id_match = re.search(r'"video":\s*{\s*"id"\s*:\s*(\d+)', json_str)
+                    video_id = video_id_match.group(1) if video_id_match else 'unknown'
+                    
+                    # Extract high quality URL
+                    high_url_match = re.search(r'"high"\s*:\s*"(https://[^"]+\.mp4)"', json_str)
+                    # Extract base quality URL  
+                    base_url_match = re.search(r'"base"\s*:\s*"(https://[^"]+\.mp4)"', json_str)
+                    
+                    if high_url_match:
+                        videos.append({
+                            'type': 'main_campaign_video_high',
+                            'url': high_url_match.group(1),
+                            'quality': 'high',
+                            'video_id': video_id
+                        })
+                        print(f"    Found main campaign video (ID: {video_id})")
+                        print(f"    Video quality: HIGH")
+                    elif base_url_match:
+                        videos.append({
+                            'type': 'main_campaign_video_base',
+                            'url': base_url_match.group(1),
+                            'quality': 'base',
+                            'video_id': video_id
+                        })
+                        print(f"    Found main campaign video (ID: {video_id})")
+                        print(f"    Video quality: BASE")
+                    else:
+                        print("    No video URLs found in project data")
+                    
+                    # Once we find window.current_project, we're done
+                    break
+                    
+                except Exception as e:
+                    print(f"    Error extracting video: {e}")
+        
+        if not videos:
+            print("    No main campaign video found")
+        
+        return videos
 
     def _extract_from_json(self, data, videos, project_url):
         """Extract videos from JSON data structures"""
@@ -430,8 +400,8 @@ class AdvancedKickstarterDownloader:
             import re
             safe_title = re.sub(r'[^a-zA-Z0-9_-]', '_', project_title)[:60]
 
-            # Extract videos
-            videos = self.extract_videos_comprehensive(soup, project_url)
+            # Extract ONLY the main campaign video
+            videos = self.extract_main_video_only(soup, project_url)
 
             return {
                 'id': project['id'],
@@ -534,25 +504,26 @@ class AdvancedKickstarterDownloader:
                     continue
 
                 if not project_info['videos']:
-                    print("No videos found")
+                    print("No main campaign video found")
                     self.stats['projects_skipped'] += 1
                     continue
 
                 self.stats['projects_with_videos'] += 1
                 self.stats['videos_found'] += len(project_info['videos'])
 
-                print(f"Found {len(project_info['videos'])} video(s)")
+                print(f"Found main campaign video")
 
                 project_folder = os.path.join(self.download_dir, project_info['safe_title'])
 
-                for video_idx, video_info in enumerate(project_info['videos'], 1):
-                    print(f"  [{video_idx}/{len(project_info['videos'])}] Downloading: {video_info['type']}")
+                # Download the main video (should only be one)
+                video_info = project_info['videos'][0]
+                print(f"  Downloading: {video_info.get('quality', 'unknown')} quality")
 
-                    if self.download_video(video_info, project_folder):
-                        self.stats['videos_downloaded'] += 1
-                        print("    Success")
-                    else:
-                        print("    Failed")
+                if self.download_video(video_info, project_folder):
+                    self.stats['videos_downloaded'] += 1
+                    print("    ✓ Download successful")
+                else:
+                    print("    ✗ Download failed")
 
                 self.stats['processed'] += 1
 
@@ -583,7 +554,8 @@ class AdvancedKickstarterDownloader:
 
 
 def main():
-    csv_file = "D:/Personal/Work/IRI/Video Downloads/Videos List.csv"
+    # Using test CSV with 10 random projects
+    csv_file = "test_10_random.csv"
 
     if not os.path.exists(csv_file):
         print(f"CSV file not found: {csv_file}")
@@ -595,7 +567,7 @@ def main():
 
     downloader = AdvancedKickstarterDownloader(csv_file)
 
-    print("=" * 70)
+    print("==" * 70)
     print("ADVANCED KICKSTARTER VIDEO DOWNLOADER")
     print("=" * 70)
     print("Features:")
@@ -603,7 +575,7 @@ def main():
     print("  - Cloudscraper for Cloudflare bypass")
     print("  - Enhanced Selenium with JavaScript ENABLED")
     print("  - Firefox fallback")
-    print("  - Comprehensive video extraction (9 methods)")
+    print("  - Extracts ONLY the main campaign video (not related videos)")
     print("  - Rate limiting protection (15-30s delays)")
     print("=" * 70)
     print(f"CSV file: {csv_file}")
