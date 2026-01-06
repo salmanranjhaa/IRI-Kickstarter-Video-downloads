@@ -93,7 +93,11 @@ If you have a different CSV file you want to use:
 ## Output
 
 ### Downloaded Videos
+<<<<<<< HEAD
 Videos are saved to: `kickstarter_downloads/[project_name].mp4` representing the main video for that project.
+=======
+Videos are saved to: `kickstarter_downloads/`
+>>>>>>> 98a56192215c1c20a53900144b7a355661db73eb
 
 ### Logs
 Logs are saved to: `kickstarter_downloads/logs/`
@@ -148,12 +152,15 @@ pip install -r requirements.txt --upgrade
 ```
 .
 ├── scrapper.py          # Main script
-├── scrapper.py                   # Legacy script (backup)
 ├── requirements.txt              # Python dependencies
 ├── README.md                     # This file
 ├── Videos List.csv               # Your input CSV
 └── kickstarter_downloads/        # Output directory
+<<<<<<< HEAD
     ├── [project_name].mp4         # Main video file (renamed)
+=======
+    └── video files
+>>>>>>> 98a56192215c1c20a53900144b7a355661db73eb
     └── logs/                     # Log files
         ├── advanced_downloads_*.json
         ├── advanced_errors_*.log
@@ -177,4 +184,7 @@ View statistics in: `kickstarter_downloads/logs/advanced_downloads_[timestamp].j
 id,url,launched_at,state
 123456,https://www.kickstarter.com/projects/example/project-name,2024-01-01,successful
 789012,https://www.kickstarter.com/projects/another/project-two,2024-02-01,successful
+<<<<<<< HEAD
 ```
+=======
+>>>>>>> 98a56192215c1c20a53900144b7a355661db73eb
