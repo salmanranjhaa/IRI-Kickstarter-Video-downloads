@@ -72,7 +72,7 @@ python scrapper.py
    - Type **'all'** to process all projects
    - Type a **number** for specific amount
 
-## ⚠️ Instructions for Supervisors (Using your own CSV)
+##  Instructions (Using your own CSV)
 
 If you have a different CSV file you want to use:
 
@@ -93,7 +93,7 @@ If you have a different CSV file you want to use:
 ## Output
 
 ### Downloaded Videos
-Videos are saved to: `kickstarter_downloads/[project_name]/`
+Videos are saved to: `kickstarter_downloads/[project_name].mp4` representing the main video for that project.
 
 ### Logs
 Logs are saved to: `kickstarter_downloads/logs/`
@@ -123,11 +123,6 @@ downloader = AdvancedKickstarterDownloader(csv_file, download_dir="custom_direct
 - Consider using a VPN or proxy
 - Process smaller batches with longer breaks
 
-### No Videos Found
-- Check if the project page actually has videos
-- Review the logs to see which extraction methods were tried
-- The page might be using custom video players not covered by the extraction methods
-
 ### Chrome Driver Issues
 If you get Chrome driver errors:
 ```bash
@@ -142,23 +137,11 @@ pip install -r requirements.txt --upgrade
 
 ## Important Notes
 
-### Legal and Ethical Considerations
-- Respect Kickstarter's Terms of Service
-- Use reasonable rate limits to avoid overloading servers
-- Only download content you have rights to access
-- Consider reaching out to project creators for permission
-
 ### Rate Limiting
 - Default: 15-30 seconds between projects
 - Kickstarter may still block you if processing too many projects
 - Consider processing in smaller batches over multiple days
 
-### Best Practices
-1. Start with 1-2 projects to test
-2. Use the default delays or longer
-3. Monitor the logs for errors
-4. Process during off-peak hours
-5. Save progress checkpoints regularly
 
 ## File Structure
 
@@ -170,8 +153,7 @@ pip install -r requirements.txt --upgrade
 ├── README.md                     # This file
 ├── Videos List.csv               # Your input CSV
 └── kickstarter_downloads/        # Output directory
-    ├── [project_name]/           # Project-specific folders
-    │   └── video files
+    ├── [project_name].mp4         # Main video file (renamed)
     └── logs/                     # Log files
         ├── advanced_downloads_*.json
         ├── advanced_errors_*.log
@@ -196,22 +178,3 @@ id,url,launched_at,state
 123456,https://www.kickstarter.com/projects/example/project-name,2024-01-01,successful
 789012,https://www.kickstarter.com/projects/another/project-two,2024-02-01,successful
 ```
-
-## License
-
-This tool is provided as-is for educational purposes. Users are responsible for ensuring their use complies with applicable laws and website terms of service.
-
-## Support
-
-For issues or questions:
-1. Check the logs in `kickstarter_downloads/logs/`
-2. Review the troubleshooting section
-3. Ensure all dependencies are installed correctly
-
-## Version History
-
-- **v1.0** (Current)
-  - Multiple bypass techniques
-  - Comprehensive video extraction
-  - Rate limiting protection
-  - Progress tracking and resume capability
