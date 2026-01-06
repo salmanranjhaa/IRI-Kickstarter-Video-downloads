@@ -416,30 +416,30 @@ class AdvancedKickstarterDownloader:
             print(f"Scraping error: {e}")
             return None
 
-    def download_video(self, video_info, project_folder):
+    def download_video(self, video_info, target_dir, filename_prefix):
         """Download video using appropriate method"""
         video_url = video_info['url']
         video_type = video_info['type']
 
         try:
-            if not os.path.exists(project_folder):
-                os.makedirs(project_folder)
+            if not os.path.exists(target_dir):
+                os.makedirs(target_dir)
 
             if 'youtube' in video_url or 'youtu.be' in video_url:
-                return self._download_with_ytdlp(video_url, project_folder, 'youtube')
+                return self._download_with_ytdlp(video_url, target_dir, filename_prefix)
             elif 'vimeo' in video_url:
-                return self._download_with_ytdlp(video_url, project_folder, 'vimeo')
+                return self._download_with_ytdlp(video_url, target_dir, filename_prefix)
             else:
-                return self._download_direct_enhanced(video_url, project_folder)
+                return self._download_direct_enhanced(video_url, target_dir, filename_prefix)
 
         except Exception as e:
             print(f"Download error: {e}")
             return False
 
-    def _download_with_ytdlp(self, video_url, project_folder, service):
+    def _download_with_ytdlp(self, video_url, target_dir, filename_prefix):
         """Download with yt-dlp"""
         try:
-            output_template = os.path.join(project_folder, f'{service}_%(title)s.%(ext)s')
+            output_template = os.path.join(target_dir, f'{filename_prefix}.%(ext)s')
 
             cmd = [
                 'yt-dlp',
@@ -457,12 +457,17 @@ class AdvancedKickstarterDownloader:
         except Exception:
             return False
 
-    def _download_direct_enhanced(self, video_url, project_folder):
+    def _download_direct_enhanced(self, video_url, target_dir, filename_prefix):
         """Enhanced direct download"""
         try:
             parsed = urlparse(video_url)
-            filename = os.path.basename(parsed.path) or f"video_{int(time.time())}.mp4"
-            filepath = os.path.join(project_folder, filename)
+            # Use original extension if available, otherwise default to .mp4
+            ext = os.path.splitext(parsed.path)[1]
+            if not ext:
+                ext = ".mp4"
+            
+            filename = f"{filename_prefix}{ext}"
+            filepath = os.path.join(target_dir, filename)
 
             if os.path.exists(filepath):
                 return True
@@ -513,13 +518,12 @@ class AdvancedKickstarterDownloader:
 
                 print(f"Found main campaign video")
 
-                project_folder = os.path.join(self.download_dir, project_info['safe_title'])
-
                 # Download the main video (should only be one)
                 video_info = project_info['videos'][0]
                 print(f"  Downloading: {video_info.get('quality', 'unknown')} quality")
 
-                if self.download_video(video_info, project_folder):
+                # Save directly to download directory with project title as filename
+                if self.download_video(video_info, self.download_dir, project_info['safe_title']):
                     self.stats['videos_downloaded'] += 1
                     print("    ✓ Download successful")
                 else:
@@ -555,7 +559,7 @@ class AdvancedKickstarterDownloader:
 
 def main():
     # Using test CSV with 10 random projects
-    csv_file = "test_10_random.csv"
+    csv_file = "random_50_projects.csv"
 
     if not os.path.exists(csv_file):
         print(f"CSV file not found: {csv_file}")

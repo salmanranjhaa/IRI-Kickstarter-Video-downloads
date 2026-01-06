@@ -57,20 +57,38 @@ Or download from: https://github.com/yt-dlp/yt-dlp
    - `launched_at`: Launch date (optional)
    - `state`: Project state (optional)
 
-2. Update the CSV file path in `advanced_scrapper.py` (line 447):
+2. Update the CSV file path in `scrapper.py` (line 447):
 ```python
 csv_file = "path/to/your/Videos List.csv"
 ```
 
 3. Run the script:
 ```bash
-python advanced_scrapper.py
+python scrapper.py
 ```
 
 4. When prompted, choose how many projects to process:
    - Press **Enter** for 5 projects (test mode)
    - Type **'all'** to process all projects
    - Type a **number** for specific amount
+
+## ⚠️ Instructions for Supervisors (Using your own CSV)
+
+If you have a different CSV file you want to use:
+
+1. **Place your CSV file** in the SAME folder as `scrapper.py`.
+2. Open `scrapper.py` in a text editor (Notepad, VS Code, etc.).
+3. Scroll down to the bottom (around **line 562**) to find this line:
+   ```python
+   csv_file = "random_50_projects.csv"
+   ```
+4. Change `"random_50_projects.csv"` to your exact filename (e.g., `"My_Project_List.csv"`).
+5. **Save the file** and run the script again.
+
+**IMPORTANT: Your CSV file MUST have these two columns:**
+- `id` (The project ID)
+- `url` (The link to the Kickstarter page)
+
 
 ## Output
 
@@ -86,7 +104,7 @@ Logs are saved to: `kickstarter_downloads/logs/`
 ## Configuration
 
 ### Adjust Delays
-To change the delay between requests, modify line 423 in `advanced_scrapper.py`:
+To change the delay between requests, modify line 423 in `scrapper.py`:
 ```python
 delay = 15 + random.random() * 15  # 15-30 seconds
 ```
@@ -146,7 +164,7 @@ pip install -r requirements.txt --upgrade
 
 ```
 .
-├── advanced_scrapper.py          # Main script
+├── scrapper.py          # Main script
 ├── scrapper.py                   # Legacy script (backup)
 ├── requirements.txt              # Python dependencies
 ├── README.md                     # This file
