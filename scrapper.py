@@ -19,16 +19,24 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import random
 import cloudscraper
+import math
+from moviepy import VideoFileClip
 
 
 class AdvancedKickstarterDownloader:
-    """
-    Advanced downloader with multiple bypass techniques for 403 errors
-    """
 
-    def __init__(self, csv_file, download_dir="kickstarter_downloads"):
-        self.csv_file = csv_file
+    def __init__(self, csv_file, download_dir="non_disabled_matched_list"):
         self.download_dir = download_dir
+        self.videos_dir = os.path.join(download_dir, "videos")
+        self.audio_dir = os.path.join(download_dir, "audio")
+
+        # Create directories
+        if not os.path.exists(self.videos_dir):
+            os.makedirs(self.videos_dir)
+        if not os.path.exists(self.audio_dir):
+            os.makedirs(self.audio_dir)
+
+        self.csv_file = csv_file
 
         # Initialize multiple session types
         self.requests_session = self._create_requests_session()
@@ -403,6 +411,7 @@ class AdvancedKickstarterDownloader:
             # Extract ONLY the main campaign video
             videos = self.extract_main_video_only(soup, project_url)
 
+            # Ensure safe_title is used but we will prefix with ID later
             return {
                 'id': project['id'],
                 'title': project_title,
@@ -491,7 +500,35 @@ class AdvancedKickstarterDownloader:
         except Exception:
             return False
 
-    def process_projects(self, max_projects=None):
+    def convert_to_mp3(self, video_path):
+        """Convert video to MP3 and return the path to the new audio file"""
+        try:
+            # Create audio filename in audio directory
+            filename = os.path.basename(video_path)
+            audio_filename = os.path.splitext(filename)[0] + ".mp3"
+            audio_path = os.path.join(self.audio_dir, audio_filename)
+            
+            # Check if audio already exists
+            if os.path.exists(audio_path):
+                print(f"    Audio file already exists: {audio_filename}")
+                return audio_path
+
+            print(f"    Converting to MP3: {audio_filename}")
+            
+            # Load video and extract audio
+            with VideoFileClip(video_path) as video:
+                if video.audio:
+                    video.audio.write_audiofile(audio_path, logger=None)
+                    return audio_path
+                else:
+                    print("    No audio track found in video")
+                    return None
+                    
+        except Exception as e:
+            print(f"    Error converting to MP3: {e}")
+            return None
+
+    def process_projects(self, max_projects=None, convert_audio=False):
         """Process all projects"""
         projects = self.read_csv()
 
@@ -499,6 +536,7 @@ class AdvancedKickstarterDownloader:
             return
 
         for idx, project in enumerate(projects[:max_projects], 1):
+            start_time = time.time()
             print(f"\n[{idx}/{len(projects)}] Processing project ID: {project['id']}")
 
             try:
@@ -522,19 +560,45 @@ class AdvancedKickstarterDownloader:
                 video_info = project_info['videos'][0]
                 print(f"  Downloading: {video_info.get('quality', 'unknown')} quality")
 
-                # Save directly to download directory with project title as filename
-                if self.download_video(video_info, self.download_dir, project_info['safe_title']):
+                # Construct filename with ID prefix
+                filename_prefix = f"{project['id']}_{project_info['safe_title']}"
+
+                # Save to videos subdirectory
+                download_success = self.download_video(video_info, self.videos_dir, filename_prefix)
+                
+                if download_success:
                     self.stats['videos_downloaded'] += 1
                     print("    ✓ Download successful")
+                    
+                    # Logic to find the downloaded file path
+                    # (We need the exact path for conversion)
+                    potential_extensions = ['.mp4', '.webm', '.mov', '.mkv']
+                    video_path = None
+                    for ext in potential_extensions:
+                        path_check = os.path.join(self.videos_dir, f"{filename_prefix}{ext}")
+                        if os.path.exists(path_check):
+                            video_path = path_check
+                            break
+                    
+                    # Smart Wait Logic: Convert Audio
+                    if convert_audio and video_path:
+                        self.convert_to_mp3(video_path)
                 else:
                     print("    ✗ Download failed")
 
                 self.stats['processed'] += 1
 
-                # Longer delay to avoid rate limiting (15-30 seconds)
-                delay = 15 + random.random() * 15
-                print(f"\n  Waiting {delay:.1f} seconds before next project...")
-                time.sleep(delay)
+                # Smart Wait Logic: Calculation
+                elapsed = time.time() - start_time
+                target_delay = 15 + random.random() * 15  # 15-30s target
+                
+                remaining_wait = target_delay - elapsed
+                
+                if remaining_wait > 0:
+                    print(f"\n  Work done in {elapsed:.1f}s. Waiting {remaining_wait:.1f}s to respect rate limits...")
+                    time.sleep(remaining_wait)
+                else:
+                    print(f"\n  Work done in {elapsed:.1f}s. Proceeding immediately (limit satisfied).")
 
             except KeyboardInterrupt:
                 print("Interrupted by user")
@@ -558,8 +622,8 @@ class AdvancedKickstarterDownloader:
 
 
 def main():
-    # Using test CSV with 10 random projects
-    csv_file = "random_50_projects.csv"
+    # Using non_disabled_matched_list.csv file
+    csv_file = "non_disabled_matched_list.csv" 
 
     if not os.path.exists(csv_file):
         print(f"CSV file not found: {csv_file}")
@@ -572,7 +636,7 @@ def main():
     downloader = AdvancedKickstarterDownloader(csv_file)
 
     print("==" * 70)
-    print("ADVANCED KICKSTARTER VIDEO DOWNLOADER")
+    print("KICKSTARTER VIDEO DOWNLOADER")
     print("=" * 70)
     print("Features:")
     print("  - Multiple bypass techniques for 403 errors")
@@ -602,10 +666,22 @@ def main():
         max_projects = 5
         print("Processing first 5 projects (default)...")
 
+    # Ask for audio conversion
+    convert_audio = False
+    try:
+        audio_input = input("\nDo you want to extract audio (MP3) as well? (y/n, default n): ").strip().lower()
+        if audio_input == 'y':
+            convert_audio = True
+            print("Audio extraction ENABLED (uses smart wait logic)")
+        else:
+            print("Audio extraction DISABLED")
+    except:
+        pass
+
     print("\nStarting in 3 seconds... (Press Ctrl+C to cancel)")
     time.sleep(3)
 
-    downloader.process_projects(max_projects=max_projects)
+    downloader.process_projects(max_projects=max_projects, convert_audio=convert_audio)
 
 
 if __name__ == "__main__":
