@@ -334,10 +334,4 @@ To reproduce the scraping process:
 
 7. **Locate files** in the designated download directory
 
-## License
 
-This project is for educational and research purposes. Please respect Kickstarter's Terms of Service and use responsibly.
-
-## Contributing
-
-Contributions, bug reports, and feature requests are welcome. Please open an issue or submit a pull request.
