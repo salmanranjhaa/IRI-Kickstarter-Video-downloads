@@ -373,11 +373,13 @@ class AdvancedKickstarterDownloader:
             with open(self.csv_file, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
+                    # Handle both lowercase and capitalized column names
+                    project_id = row.get('id') or row.get('ID')
+                    project_url = row.get('url') or row.get('Url')
+                    
                     projects.append({
-                        'id': row.get('id'),
-                        'url': row.get('url'),
-                        'launched_at': row.get('launched_at'),
-                        'state': row.get('state')
+                        'id': project_id,
+                        'url': project_url
                     })
 
             self.stats['total_projects'] = len(projects)
@@ -417,8 +419,7 @@ class AdvancedKickstarterDownloader:
                 'title': project_title,
                 'safe_title': safe_title,
                 'url': project_url,
-                'videos': videos,
-                'state': project['state']
+                'videos': videos
             }
 
         except Exception as e:
@@ -529,13 +530,26 @@ class AdvancedKickstarterDownloader:
             return None
 
     def process_projects(self, max_projects=None, convert_audio=False):
-        """Process all projects"""
+        """Process all projects, skipping any already completed ones."""
         projects = self.read_csv()
 
         if not projects:
             return
 
+        # Build the set of already-done IDs once before the loop
+        print("\nScanning output folders for already-processed projects...")
+        completed_ids = self._build_completed_set()
+        skipped_upfront = 0
+
         for idx, project in enumerate(projects[:max_projects], 1):
+            project_id = str(project['id'])
+
+            # --- Fast-skip: no scraping, no waiting ---
+            if project_id in completed_ids:
+                skipped_upfront += 1
+                print(f"[{idx}/{len(projects)}] Skipping project ID {project_id} (already downloaded)")
+                continue
+
             start_time = time.time()
             print(f"\n[{idx}/{len(projects)}] Processing project ID: {project['id']}")
 
@@ -610,6 +624,29 @@ class AdvancedKickstarterDownloader:
 
         self._save_results()
 
+    def _build_completed_set(self):
+        """Scan existing output files and return a set of already-processed project IDs.
+        
+        Files are named {project_id}_{safe_title}.ext so the ID is the part
+        before the first underscore that is a pure digit string.
+        Both videos/ and audio/ directories are checked so even partially
+        converted runs are correctly detected.
+        """
+        completed = set()
+        dirs_to_scan = [self.videos_dir, self.audio_dir]
+
+        for scan_dir in dirs_to_scan:
+            if not os.path.exists(scan_dir):
+                continue
+            for fname in os.listdir(scan_dir):
+                # Extract leading numeric ID from filenames like "83107119_THE_SKUNKWORK_ALBUM.mp4"
+                parts = fname.split('_')
+                if parts and parts[0].isdigit():
+                    completed.add(parts[0])
+
+        print(f"  Resume check: {len(completed)} project IDs already found in output folders.")
+        return completed
+
     def _save_results(self):
         """Save final results"""
         with open(self.download_log, 'w') as f:
@@ -622,18 +659,16 @@ class AdvancedKickstarterDownloader:
 
 
 def main():
-    # Using non_disabled_matched_list.csv file
-    csv_file = "non_disabled_matched_list.csv" 
+    # Using uncovered_individual_nondisabled_list.csv from E:\temp\uncovered_march
+    csv_file = r"E:\temp\uncovered_march\uncovered_individual_nondisabled_list.csv"
 
     if not os.path.exists(csv_file):
         print(f"CSV file not found: {csv_file}")
-        # Try current directory
-        csv_file = "Videos List.csv"
-        if not os.path.exists(csv_file):
-            print("CSV file not found in current directory either")
-            return
+        return
 
-    downloader = AdvancedKickstarterDownloader(csv_file)
+    # Set download directory to E:\temp\uncovered_march\Output
+    download_dir = r"E:\temp\uncovered_march\Output"
+    downloader = AdvancedKickstarterDownloader(csv_file, download_dir=download_dir)
 
     print("==" * 70)
     print("KICKSTARTER VIDEO DOWNLOADER")

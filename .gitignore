@@ -1,5 +1,48 @@
+# ─── Previously ignored ─────────────────────────────────────────────────────────
 /.claude
 /2020_2023_USvideos.csv
 /kickstarter_downloads
 /test_downloads
-/__pycache__
+
+# ─── Media files (video & audio) ────────────────────────────────────────────────
+*.mp4
+*.mp3
+*.webm
+*.mov
+*.mkv
+*.avi
+*.wav
+*.flac
+*.aac
+*.ogg
+*.m4a
+*.m4v
+
+# ─── Output / download directories ──────────────────────────────────────────────
+March Data/Output/
+all_disabled_downloads/
+non_disabled_matched_list/
+additonal 2 attempts/
+**/videos/
+**/audio/
+**/logs/
+
+# ─── uv virtual environment & lock ──────────────────────────────────────────────
+.venv/
+uv.lock
+
+# ─── Python cache ────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ─── Zip / archive files ─────────────────────────────────────────────────────────
+*.zip
+*.tar.gz
+*.rar
+
+# ─── OS / editor clutter ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
