@@ -8,8 +8,6 @@ This repository currently contains a 2-stage workflow:
 The README below reflects the latest versions of:
 - `scrapper.py`
 - `Transcription (via collab).ipynb`
-- `transcribe.py`
-- `transcribe_status.py`
 
 ## What The Scraper Currently Does
 
@@ -144,43 +142,6 @@ Notebook behavior:
 Final output file:
 - `OUTPUT_CSV` (columns: `ID`, `original_file_name`, `transcribed_text`)
 
-## Local Transcription Scripts (Alternative)
-
-### `transcribe.py`
-
-This is a Groq-based transcription runner with:
-- 20 RPM pacing (`MIN_DELAY = 3s`)
-- 429 exponential backoff retries
-- resume state from legacy + current CSV
-- retry queue for previous errors
-- polling loop mode
-
-Before running:
-- Update `INPUT_CSV`, `AUDIO_DIR`, `LEGACY_CSV`, `OUTPUT_CSV` constants.
-- Set a valid Groq API key (do not commit secrets).
-
-Run:
-
-```powershell
-uv run transcribe.py
-```
-
-### `transcribe_status.py`
-
-Status dashboard for transcription progress.
-
-Run once:
-
-```powershell
-uv run transcribe_status.py
-```
-
-Auto-refresh mode:
-
-```powershell
-uv run transcribe_status.py --watch
-```
-
 ## Logic Check Notes
 
 I checked the latest script logic against the code in this repo:
@@ -188,7 +149,6 @@ I checked the latest script logic against the code in this repo:
 - Scraper resume logic is ID-based from existing output file names.
 - Scraper currently requires editing hardcoded path values in `main()` before running.
 - Colab notebook transcription is checkpointed and resumable by `ID` in `transcriptions.csv`.
-- Local Groq transcription scripts are path-config driven and should be updated per dataset before use.
 
 ## Quick Start (Practical)
 
