@@ -1,337 +1,199 @@
-# Kickstarter Video Downloader
+# Kickstarter Video Scraper + Transcription Pipeline
 
-An advanced web scraper designed to download main campaign videos from Kickstarter project pages. This tool implements multiple bypass techniques to handle 403 errors and Cloudflare protection, with optional audio extraction capabilities.
+This repository currently contains a 2-stage workflow:
 
-## Overview
+1. Run `scrapper.py` locally to download Kickstarter campaign videos (and optionally extract MP3 audio).
+2. Run `Transcription (via collab).ipynb` in Google Colab to transcribe the MP3 files.
 
-This scraper extracts and downloads the main campaign video from Kickstarter projects using a CSV file containing project URLs. It features multiple fallback methods to bypass web protection mechanisms and can optionally extract audio (MP3) from downloaded videos.
+The README below reflects the latest versions of:
+- `scrapper.py`
+- `Transcription (via collab).ipynb`
+- `transcribe.py`
+- `transcribe_status.py`
 
-## Key Features
+## What The Scraper Currently Does
 
-### Multi-Method Fetching
-The scraper employs four different fetching methods to handle access restrictions:
-- **Cloudscraper**: Automatic Cloudflare bypass
-- **Enhanced Requests**: Rotating user agents and headers
-- **Selenium Chrome**: Undetected Chrome with stealth mode and JavaScript enabled
-- **Firefox Fallback**: Alternative browser for additional reliability
+`scrapper.py`:
+- Reads project rows from CSV (`id`/`url` or `ID`/`Url` columns).
+- Fetches each Kickstarter page with fallback methods:
+  - cloudscraper
+  - enhanced `requests`
+  - Selenium + undetected Chrome
+  - Selenium Firefox fallback
+- Extracts only the main campaign video from `window.current_project` JSON.
+- Downloads the video into `videos/`.
+- Optionally converts to MP3 into `audio/`.
+- Writes logs under `logs/`.
+- Supports resume behavior by skipping project IDs already found in existing `videos/` or `audio/` file names.
+- Uses smart per-project throttling (target 15-30 seconds total per project including work time).
 
-### Simplified Video Extraction
-The scraper specifically targets the main campaign video only by extracting it from the `window.current_project` JSON object embedded in the page HTML. This focused approach:
-- Extracts only the primary campaign video (not related or update videos)
-- Prioritizes high-quality video URLs when available
-- Falls back to base quality if high quality is unavailable
+## End-To-End Workflow
 
-### Audio Extraction
-Optional MP3 audio extraction using MoviePy:
-- Converts downloaded videos to MP3 format
-- Saves audio files to a separate `audio/` subdirectory
-- Automatically skips conversion if MP3 already exists
-- Detects and reports videos without audio tracks
+1. Run the scraper locally (with audio extraction enabled).
+2. Upload generated MP3 files to Google Drive.
+3. Run the Colab notebook to transcribe and save `transcriptions.csv`.
+4. Download/use the output CSV.
 
-### Rate Limiting Protection
-- Smart wait logic: 15-30 second delays between requests
-- Respects processing time (only waits for remaining time if needed)
-- Helps avoid IP bans and rate limiting
+## Local Setup (Scraper)
 
-### Organized Output
-- Videos saved to: `[download_dir]/videos/`
-- Audio files saved to: `[download_dir]/audio/`
-- Comprehensive logging to: `[download_dir]/logs/`
+### Prerequisites
 
-## Requirements
+- Windows machine (script paths are currently Windows-style by default).
+- Python environment managed by `uv`.
+- Chrome installed (for Selenium fallback path).
+- FFmpeg installed (required if MP3 extraction is enabled).
+- Optional:
+  - Firefox + geckodriver (only used if Chrome path fails).
+  - `yt-dlp` (used for YouTube/Vimeo URLs).
 
-### Software Dependencies
-- Python 3.7 or higher
-- Google Chrome (for Selenium-based fetching)
-- Firefox (optional, for fallback method)
-- FFmpeg (required for audio extraction)
+### Install dependencies
 
-### Python Packages
-All required packages are listed in `requirements.txt`:
-- requests
-- beautifulsoup4
-- selenium
-- undetected-chromedriver
-- cloudscraper
-- moviepy
-- (see requirements.txt for complete list)
-
-## Installation
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/yourusername/IRI-Kickstarter-Video-downloads.git
-cd IRI-Kickstarter-Video-downloads
+```powershell
+uv sync
 ```
 
-### 2. Install Python Dependencies
-```bash
-pip install -r requirements.txt
-```
+## Run The Scraper Locally
 
-### 3. Install FFmpeg (Required for Audio Extraction)
-**Windows:**
-- Download from: https://ffmpeg.org/download.html
-- Add FFmpeg to your system PATH
+### 1. Configure input/output paths in `scrapper.py`
 
-**macOS:**
-```bash
-brew install ffmpeg
-```
-
-**Linux:**
-```bash
-sudo apt-get install ffmpeg
-```
-
-## Usage
-
-### Prepare Your CSV File
-
-The scraper expects a CSV file with the following columns:
-- `id`: Project ID (required)
-- `url`: Full Kickstarter project URL (required)
-- `launched_at`: Launch date (optional)
-- `state`: Project state (optional)
-
-**Example CSV Format:**
-```csv
-id,url,launched_at,state
-123456,https://www.kickstarter.com/projects/example/project-name,2024-01-01,successful
-789012,https://www.kickstarter.com/projects/another/project-two,2024-02-01,successful
-```
-
-### Default CSV File
-
-By default, the scraper looks for `non_disabled_matched_list.csv` in the same directory. If not found, it falls back to `Videos List.csv`.
-
-### Run the Scraper
-
-```bash
-python scrapper.py
-```
-
-### Interactive Prompts
-
-**1. Number of Projects:**
-```
-How many projects to process? (press Enter for 5, or type 'all'):
-```
-- Press **Enter**: Process first 5 projects (default/testing)
-- Type **'all'**: Process all projects in CSV
-- Type a **number**: Process that many projects
-
-**2. Audio Extraction:**
-```
-Do you want to extract audio (MP3) as well? (y/n, default n):
-```
-- Type **'y'**: Enable audio extraction
-- Press **Enter** or type **'n'**: Video download only
-
-## Output Structure
-
-```
-download_directory/
-├── videos/
-│   ├── [project_id]_[project_title].mp4
-│   ├── [project_id]_[project_title].mp4
-│   └── ...
-├── audio/
-│   ├── [project_id]_[project_title].mp3
-│   ├── [project_id]_[project_title].mp3
-│   └── ...
-└── logs/
-    ├── advanced_downloads_[timestamp].json
-    └── advanced_errors_[timestamp].log
-```
-
-### File Naming Convention
-Files are named using the format: `[project_id]_[sanitized_project_title].[extension]`
-
-Example: `123456_Revolutionary_New_Product.mp4`
-
-## Configuration
-
-### Using a Custom CSV File
-
-To use a different CSV file, modify line 626 in `scrapper.py`:
+In `main()`, update these two values:
 
 ```python
-csv_file = "non_disabled_matched_list.csv"  # Change this to your filename
+csv_file = r"E:\temp\uncovered_march\uncovered_individual_nondisabled_list.csv"
+download_dir = r"E:\temp\uncovered_march\Output"
 ```
 
-### Changing the Download Directory
+Use paths that exist on your machine.
 
-To change where files are saved, modify line 28 in `scrapper.py`:
+### 2. Ensure CSV format
+
+Required columns:
+- `id` and `url`
+
+Also accepted:
+- `ID` and `Url`
+
+### 3. Run
+
+```powershell
+uv run scrapper.py
+```
+
+Interactive prompts:
+- Number of projects:
+  - press Enter -> first 5
+  - enter `all` -> all rows
+  - enter number -> first N rows
+- Audio extraction:
+  - `y` -> extract MP3
+  - Enter or `n` -> video only
+
+### 4. Output structure
+
+Under your configured `download_dir`:
+
+```text
+[download_dir]/
+  videos/
+  audio/
+  logs/
+```
+
+## Transcribe In Google Colab (Recommended)
+
+Use `Transcription (via collab).ipynb`.
+
+### 1. Upload audio to Google Drive
+
+Upload the scraper-generated MP3 files (`[download_dir]/audio/*.mp3`) to your Drive folder.
+
+### 2. Open notebook in Colab
+
+Open `Transcription (via collab).ipynb` in Google Colab.
+
+### 3. Select GPU runtime
+
+In Colab:
+- Runtime -> Change runtime type -> GPU
+
+### 4. Update notebook paths (Cell that defines `AUDIO_DIR`/`OUTPUT_DIR`)
+
+Set these to your Drive locations:
 
 ```python
-def __init__(self, csv_file, download_dir="non_disabled_matched_list"):
-    # Change "non_disabled_matched_list" to your preferred directory name
+AUDIO_DIR  = "/content/drive/MyDrive/Audio Transcription/Audio_last/audio"
+OUTPUT_DIR = "/content/drive/MyDrive/Audio Transcription/Output"
+OUTPUT_CSV = os.path.join(OUTPUT_DIR, "transcriptions.csv")
 ```
 
-Or pass it directly when creating the downloader instance (line 636):
+### 5. Run all cells top-to-bottom
 
-```python
-downloader = AdvancedKickstarterDownloader(csv_file, download_dir="my_custom_directory")
+Notebook behavior:
+- Installs Whisper/HuggingFace dependencies.
+- Mounts Google Drive.
+- Loads `openai/whisper-large-v3`.
+- Copies audio files to local Colab disk cache (`/content/audio_cache`) for faster reads.
+- Uses checkpoint CSV resume logic:
+  - If `OUTPUT_CSV` exists, IDs already in CSV are skipped.
+- Transcribes in batches (`BATCH_SIZE = 16`).
+- If a batch fails, it falls back to file-by-file for that batch.
+- Appends each finished batch immediately to CSV to reduce loss on session interruption.
+
+### 6. Collect output
+
+Final output file:
+- `OUTPUT_CSV` (columns: `ID`, `original_file_name`, `transcribed_text`)
+
+## Local Transcription Scripts (Alternative)
+
+### `transcribe.py`
+
+This is a Groq-based transcription runner with:
+- 20 RPM pacing (`MIN_DELAY = 3s`)
+- 429 exponential backoff retries
+- resume state from legacy + current CSV
+- retry queue for previous errors
+- polling loop mode
+
+Before running:
+- Update `INPUT_CSV`, `AUDIO_DIR`, `LEGACY_CSV`, `OUTPUT_CSV` constants.
+- Set a valid Groq API key (do not commit secrets).
+
+Run:
+
+```powershell
+uv run transcribe.py
 ```
 
-### Adjusting Rate Limits
+### `transcribe_status.py`
 
-To modify the delay between requests, change line 593 in `scrapper.py`:
+Status dashboard for transcription progress.
 
-```python
-target_delay = 15 + random.random() * 15  # Currently 15-30 seconds
+Run once:
+
+```powershell
+uv run transcribe_status.py
 ```
 
-## How It Works
+Auto-refresh mode:
 
-### 1. CSV Processing
-The scraper reads project information from the CSV file, including project IDs and URLs.
-
-### 2. Page Fetching
-For each project URL, the scraper attempts to fetch the page content using multiple methods in sequence:
-1. Cloudscraper (fastest, handles Cloudflare)
-2. Enhanced requests (rotating headers)
-3. Selenium Chrome (JavaScript-enabled, stealth mode)
-4. Firefox (fallback browser)
-
-The first successful method is used, and others are skipped.
-
-### 3. Video Extraction
-The scraper parses the HTML to find the `window.current_project` JSON object, which contains:
-- Project metadata
-- Main campaign video information
-- Video URLs in different quality levels
-
-It extracts the highest quality video URL available (high quality preferred, base quality as fallback).
-
-### 4. Video Download
-Videos are downloaded using:
-- Direct download for standard MP4 URLs
-- yt-dlp for YouTube/Vimeo embeds (if present)
-- Cloudscraper or requests session for download
-
-### 5. Audio Extraction (Optional)
-If enabled, the scraper:
-- Loads the downloaded video with MoviePy
-- Extracts the audio track
-- Saves it as MP3 in the audio directory
-- Handles videos without audio tracks gracefully
-
-### 6. Smart Wait Logic
-After each project:
-- Calculates total processing time
-- Waits for remaining time to meet 15-30 second target
-- Proceeds immediately if processing already took longer than target
-
-## Statistics and Logging
-
-### Download Log
-Location: `[download_dir]/logs/advanced_downloads_[timestamp].json`
-
-Contains:
-- Total projects processed
-- Videos found
-- Videos successfully downloaded
-- Projects with videos
-- Projects skipped
-- Error details
-
-### Error Log
-Location: `[download_dir]/logs/advanced_errors_[timestamp].log`
-
-Records detailed error information for troubleshooting.
-
-## Troubleshooting
-
-### 403 Forbidden Errors
-If you still encounter 403 errors:
-- Increase delays between requests (modify line 593)
-- Process smaller batches over multiple sessions
-- Use a VPN or proxy service
-- Try running during off-peak hours
-
-### Chrome Driver Issues
-```bash
-pip install --upgrade undetected-chromedriver
+```powershell
+uv run transcribe_status.py --watch
 ```
 
-### Missing Dependencies
-```bash
-pip install -r requirements.txt --upgrade
-```
+## Logic Check Notes
 
-### FFmpeg Not Found
-Ensure FFmpeg is installed and added to your system PATH. Verify installation:
-```bash
-ffmpeg -version
-```
+I checked the latest script logic against the code in this repo:
 
-### No Audio Track Found
-Some Kickstarter videos may not contain audio tracks. The scraper will detect this and skip audio extraction for those files.
+- Scraper resume logic is ID-based from existing output file names.
+- Scraper currently requires editing hardcoded path values in `main()` before running.
+- Colab notebook transcription is checkpointed and resumable by `ID` in `transcriptions.csv`.
+- Local Groq transcription scripts are path-config driven and should be updated per dataset before use.
 
-## Best Practices
+## Quick Start (Practical)
 
-### Rate Limiting
-- Default delays (15-30 seconds) are conservative
-- Processing large batches may still trigger rate limiting
-- Consider splitting large CSV files into smaller batches
-- Space out batch processing over multiple days if needed
-
-### CSV File Requirements
-- Ensure `id` and `url` columns are present
-- Remove duplicate project IDs before processing
-- Verify all URLs are valid Kickstarter project pages
-
-### Disk Space
-- Estimate approximately 50-200 MB per video
-- Audio files are typically 3-10 MB each
-- Ensure adequate free space before processing large batches
-
-## Technical Details
-
-### Stealth Features
-- Undetected ChromeDriver to bypass bot detection
-- JavaScript enabled for dynamic content loading
-- User agent rotation
-- Realistic browser behavior (scrolling, waiting)
-- Cookie handling
-- Cloudflare bypass via cloudscraper
-
-### Video Quality Priority
-1. High quality (preferred)
-2. Base quality (fallback)
-
-### Supported Video Sources
-- Direct MP4 URLs
-- YouTube embeds (via yt-dlp)
-- Vimeo embeds (via yt-dlp)
-- Other video formats (.webm, .mov)
-
-## Reproducibility
-
-To reproduce the scraping process:
-
-1. **Set up environment**:
-   ```bash
-   git clone [repository_url]
-   cd IRI-Kickstarter-Video-downloads
-   pip install -r requirements.txt
-   ```
-
-2. **Install FFmpeg** (follow installation instructions above)
-
-3. **Prepare CSV file** with required columns (`id`, `url`)
-
-4. **Run the scraper**:
-   ```bash
-   python scrapper.py
-   ```
-
-5. **Follow prompts** to specify number of projects and audio extraction preference
-
-6. **Monitor output** in console and check logs for any issues
-
-7. **Locate files** in the designated download directory
-
-
+1. Edit `scrapper.py` paths in `main()`.
+2. Run `uv run scrapper.py` and choose `y` for MP3 extraction.
+3. Upload `[download_dir]/audio` to Google Drive.
+4. Open `Transcription (via collab).ipynb` in Colab and update `AUDIO_DIR`/`OUTPUT_DIR`.
+5. Run all cells and collect `transcriptions.csv` from Drive.
